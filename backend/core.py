@@ -50,8 +50,8 @@ def run_llm(query:str)-> Dict[str, Any]:
         "You are a helpful AI assistant that answers questions about LangChain documentation."
         "You have access to a tool that retrieves relevant documentation."
         "Use the tool to find relevant information before answering questions."
-        "Always cite the sources you use in your answers."
-        "If you cannot ifnd the answer in the retrieved documentation, say so."
+        "Do NOT include source URLs or citations in your answer. Sources are displayed separately."
+        "If you cannot find the answer in the retrieved documentation, say so."
     )
 
     agent = create_agent(model, tools=[retrieve_context], system_prompt=system_prompt)
@@ -60,7 +60,15 @@ def run_llm(query:str)-> Dict[str, Any]:
 
     response = agent.invoke({'messages': messages})
 
-    answer = response['messages'][-1].content
+    raw_content = response['messages'][-1].content
+
+    # Gemini may return content as a list of blocks: [{'type': 'text', 'text': '...'}]
+    if isinstance(raw_content, list):
+        answer = "\n".join(
+            block.get("text", "") for block in raw_content if isinstance(block, dict)
+        )
+    else:
+        answer = str(raw_content)
 
     context_docs = []
 
